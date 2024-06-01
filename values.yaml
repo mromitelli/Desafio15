@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: check
+data:
+  config.yml: |
+    value: value1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8083
+      targetPort: 8083  # Puerto en el que tu aplicación está escuchando dentro del clúster
+      nodePort: 30000    # Puerto externo que se asignará en cada nodo del clúster
+  selector:
+    app: web-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-service
+  template:
+    metadata:
+      labels:
+        app: web-service
+    spec:
+      containers:
+      - name: my-app-container
+        image: romitelli/desafio12:v1 # Reemplaza "tu-imagen:v1" con la imagen de tu aplicación en la versión actual
+        ports:
+        - containerPort: 8083 # Puerto en el que tu aplicación expone servicios
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: my-app-config
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: web-service
+    spec:
+      containers:
+      - name: web-service
+        image: romitelli/desafio12:v1  # Reemplaza "tu-imagen:v1" con la imagen de tu aplicación en la versión actual
+        ports:
+        - containerPort: 8083 # Puerto en el que tu aplicación expone servicios
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: my-app-config
